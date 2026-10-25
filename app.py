@@ -5,7 +5,7 @@ app = Flask(__name__)
 
 DATABASE = "events.db"
 
-# Initialize the database
+
 def initialize_database():
     connection = sqlite3.connect(DATABASE)
 
@@ -18,18 +18,28 @@ def initialize_database():
         )
     """)
 
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS registrations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            participant_name TEXT NOT NULL,
+            email TEXT NOT NULL,
+            event_id INTEGER NOT NULL,
+            FOREIGN KEY (event_id) REFERENCES events(id),
+            UNIQUE (email, event_id)
+        )
+    """)
+
     connection.commit()
     connection.close()
 
-# Web page
-HTML_PAGE = """
+
+PAGE = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Event Registration System - V1</title>
+    <title>Event Registration System - V3</title>
 
     <style>
         body {
@@ -40,12 +50,16 @@ HTML_PAGE = """
         }
 
         .container {
-            max-width: 800px;
+            max-width: 1000px;
             margin: auto;
         }
 
         h1, h2 {
             color: #1e293b;
+        }
+
+        .subtitle {
+            color: #64748b;
         }
 
         .card {
@@ -64,7 +78,7 @@ HTML_PAGE = """
 
         input {
             width: 100%;
-            padding: 10px;
+            padding: 11px;
             box-sizing: border-box;
             border: 1px solid #cbd5e1;
             border-radius: 5px;
@@ -84,12 +98,20 @@ HTML_PAGE = """
             background: #1d4ed8;
         }
 
-        .success {
-            background: #dcfce7;
-            color: #166534;
+        .message {
             padding: 12px;
             border-radius: 5px;
             margin-bottom: 20px;
+        }
+
+        .success {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
         }
 
         table {
@@ -107,117 +129,175 @@ HTML_PAGE = """
             background: #e2e8f0;
         }
 
-        .subtitle {
-            color: #64748b;
+        .table-container {
+            overflow-x: auto;
         }
     </style>
 </head>
 
 <body>
-    <div class="container">
+<div class="container">
 
-        <h1>Event Registration System</h1>
-        <p class="subtitle">Version 1 — Create Event</p>
+    <h1>Event Registration System</h1>
+    <p class="subtitle">Version 3 — View Registered Users</p>
 
-        {% if message %}
-            <div class="success">{{ message }}</div>
-        {% endif %}
+    {% if message %}
+        <div class="message {{ message_type }}">{{ message }}</div>
+    {% endif %}
 
-        <div class="card">
-            <h2>Create a New Event</h2>
+    <div class="card">
+        <h2>Create a New Event</h2>
 
-            <form method="POST" action="/">
-                <label for="name">Event Name</label>
-                <input type="text" id="name" name="name"
-                       maxlength="100" required>
+        <form method="POST" action="/create-event">
+            <label for="name">Event Name</label>
+            <input type="text" id="name" name="name"
+                   maxlength="100" required>
 
-                <label for="date">Event Date</label>
-                <input type="date" id="date" name="date" required>
+            <label for="date">Event Date</label>
+            <input type="date" id="date" name="date" required>
 
-                <label for="location">Event Location</label>
-                <input type="text" id="location" name="location"
-                       maxlength="150" required>
+            <label for="location">Event Location</label>
+            <input type="text" id="location" name="location"
+                   maxlength="150" required>
 
-                <button type="submit">Create Event</button>
-            </form>
-        </div>
-
-        <div class="card">
-            <h2>Created Events</h2>
-
-            {% if events %}
-                <table>
-                    <tr>
-                        <th>ID</th>
-                        <th>Event Name</th>
-                        <th>Date</th>
-                        <th>Location</th>
-                    </tr>
-
-                    {% for event in events %}
-                    <tr>
-                        <td>{{ event[0] }}</td>
-                        <td>{{ event[1] }}</td>
-                        <td>{{ event[2] }}</td>
-                        <td>{{ event[3] }}</td>
-                    </tr>
-                    {% endfor %}
-                </table>
-            {% else %}
-                <p>No events created yet.</p>
-            {% endif %}
-        </div>
-
+            <button type="submit">Create Event</button>
+        </form>
     </div>
+
+    <div class="card">
+        <h2>Created Events</h2>
+
+        {% if events %}
+        <div class="table-container">
+            <table>
+                <tr>
+                    <th>ID</th>
+                    <th>Event Name</th>
+                    <th>Date</th>
+                    <th>Location</th>
+                </tr>
+
+                {% for event in events %}
+                <tr>
+                    <td>{{ event[0] }}</td>
+                    <td>{{ event[1] }}</td>
+                    <td>{{ event[2] }}</td>
+                    <td>{{ event[3] }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        {% else %}
+            <p>No events have been created yet.</p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h2>Registered Participants</h2>
+
+        {% if registrations %}
+        <div class="table-container">
+            <table>
+                <tr>
+                    <th>Registration ID</th>
+                    <th>Participant Name</th>
+                    <th>Email</th>
+                    <th>Event Name</th>
+                    <th>Event Date</th>
+                </tr>
+
+                {% for participant in registrations %}
+                <tr>
+                    <td>{{ participant[0] }}</td>
+                    <td>{{ participant[1] }}</td>
+                    <td>{{ participant[2] }}</td>
+                    <td>{{ participant[3] }}</td>
+                    <td>{{ participant[4] }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        {% else %}
+            <p>No participants have registered yet.</p>
+        {% endif %}
+    </div>
+
+</div>
 </body>
 </html>
 """
 
-# Home page and event creation
-@app.route("/", methods=["GET", "POST"])
-def home():
-    message = ""
 
-    if request.method == "POST":
-        name = request.form.get("name", "").strip()
-        event_date = request.form.get("date", "").strip()
-        location = request.form.get("location", "").strip()
-
-        if not name or not event_date or not location:
-            message = "Please fill in all event details."
-        else:
-            connection = sqlite3.connect(DATABASE)
-
-            connection.execute(
-                """
-                INSERT INTO events (name, date, location)
-                VALUES (?, ?, ?)
-                """,
-                (name, event_date, location)
-            )
-
-            connection.commit()
-            connection.close()
-
-            message = "Event created successfully!"
-
+def get_events():
     connection = sqlite3.connect(DATABASE)
 
-    events = connection.execute(
-        """
+    events = connection.execute("""
         SELECT id, name, date, location
         FROM events
         ORDER BY id DESC
-        """
-    ).fetchall()
+    """).fetchall()
 
     connection.close()
+    return events
 
+
+def get_registrations():
+    connection = sqlite3.connect(DATABASE)
+
+    registrations = connection.execute("""
+        SELECT
+            r.id,
+            r.participant_name,
+            r.email,
+            e.name,
+            e.date
+        FROM registrations r
+        JOIN events e ON r.event_id = e.id
+        ORDER BY r.id DESC
+    """).fetchall()
+
+    connection.close()
+    return registrations
+
+
+def render_home(message="", message_type="success"):
     return render_template_string(
-        HTML_PAGE,
-        events=events,
-        message=message
+        PAGE,
+        events=get_events(),
+        registrations=get_registrations(),
+        message=message,
+        message_type=message_type
     )
+
+
+@app.route("/")
+def home():
+    return render_home()
+
+
+@app.route("/create-event", methods=["POST"])
+def create_event():
+    name = request.form.get("name", "").strip()
+    event_date = request.form.get("date", "").strip()
+    location = request.form.get("location", "").strip()
+
+    if not name or not event_date or not location:
+        return render_home(
+            "Please fill in all event details.", "error"
+        )
+
+    connection = sqlite3.connect(DATABASE)
+
+    connection.execute("""
+        INSERT INTO events (name, date, location)
+        VALUES (?, ?, ?)
+    """, (name, event_date, location))
+
+    connection.commit()
+    connection.close()
+
+    return render_home("Event created successfully!")
+
 
 if __name__ == "__main__":
     initialize_database()
