@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: event-registration-v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: event-registration-v1
+  template:
+    metadata:
+      labels:
+        app: event-registration-v1
+    spec:
+      containers:
+        - name: event-registration
+          image: sahithi3377/event-registration-system:v1
+          ports:
+            - containerPort: 5000
+
